@@ -1,6 +1,9 @@
 # Avoid commit of personal json
 mocks/
 
+# JetBrains Fleet
+.fleet/*
+
 # Created by https://www.toptal.com/developers/gitignore/api/osx,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=osx,node
 
