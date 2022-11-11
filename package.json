@@ -1,0 +1,16 @@
+{
+  "name": "json-faker",
+  "version": "1.0.0",
+  "description": "Best Json Faker for Docker",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js",
+    "start": "node app.js"
+  },
+  "author": "Gabriele Valenza",
+  "license": "MPL-2.0",
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "express": "^4.18.1"
+  }
+}
