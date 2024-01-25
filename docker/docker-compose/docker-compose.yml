@@ -1,0 +1,11 @@
+version: '3.7'
+
+services:
+  json-faker:
+    image: valenz97/json-faker
+    environment:
+      - SERVER_PORT=${SERVER_PORT:-8099}
+    ports:
+      - "8099:8099"
+    volumes:
+      - ../../mocks:/usr/src/app/mocks
