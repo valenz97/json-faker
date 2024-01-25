@@ -1,0 +1,10 @@
+doctype html
+html(lang="en")
+  head
+    title= 'A simple json faker'
+  body
+    div Here is the list of json file found in the /mocks folder:
+      ul
+        for path in pathList
+          li
+            a(href= path) #{path}

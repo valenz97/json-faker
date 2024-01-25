@@ -6,6 +6,8 @@ const app = express();
 const port = 8099;
 const mocksDirectory = path.join(__dirname, 'mocks');
 
+const pathList = [];
+
 const findJsonFiles = async (directory, currentPath = '') => {
   const entries = await fs.readdir(directory, {withFileTypes: true});
   
@@ -31,6 +33,7 @@ const exposeFile = async () => {
   
   jsonFiles.forEach((jsonPath) => {
     const urlPath = '/' + jsonPath.replace(/\.json$/, '');
+    pathList.push(urlPath);
     console.log(`Serving path '${path.resolve(__dirname, urlPath)}'`);
     app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
   });
@@ -44,7 +47,7 @@ exposeFile().then(() => {
   
   // serve the entry page
   app.get('/', (req, res) => {
-    res.sendFile('index.html', {root: __dirname});
+    res.render('index.pug', {pathList: pathList});
   });
 });
 
