@@ -17,7 +17,7 @@ const findJsonFiles = async (directory, currentPath = '') => {
     } else if (entry.isFile() && entry.name.endsWith('.json')) {
       return path.join(currentPath, entry.name);
     } else {
-      console.debug(`Found ${entry.name} which isn't a json nor a directory`);
+      console.error(`Path '${path.join(currentPath, entry.name)}' it's not valid`);
       return null;
     }
   }));
@@ -31,7 +31,7 @@ const exposeFile = async () => {
   
   jsonFiles.forEach((jsonPath) => {
     const urlPath = '/' + jsonPath.replace(/\.json$/, '');
-    console.log(`Serving path ${urlPath}`);
+    console.log(`Serving path '${path.resolve(__dirname, urlPath)}'`);
     app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
   });
 }
