@@ -1,66 +1,50 @@
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
 const express = require('express');
 const app = express();
 
 const port = 8099;
-const mainDirPath = path.join(__dirname, 'mocks');
+const mocksDirectory = path.join(__dirname, 'mocks');
 
-fs.watch('./mocks', (eventType, filename) => {
-  console.log(`${eventType}: ${filename}`);
-  exposeFile(mainDirPath);
-})
-
-const exposeFile = (currentDirPath) => {
-  fs.readdir(currentDirPath, (err, files) => {
-    if (err) {
-      return console.log('Unable to scan directory: ' + err);
+const findJsonFiles = async (directory, currentPath = '') => {
+  const entries = await fs.readdir(directory, {withFileTypes: true});
+  
+  const files = await Promise.all(entries.map(async (entry) => {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      // if it's a directory, call recursively the function
+      return findJsonFiles(fullPath, path.join(currentPath, entry.name));
+    } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      return path.join(currentPath, entry.name);
+    } else {
+      console.debug(`Found ${entry.name} which isn't a json nor a directory`);
+      return null;
     }
-    
-    const jsonList = files.filter(f => f.endsWith(".json"));
-    
-    jsonList.forEach((json) => {
-      app.get('/' + json.split('.')[0], (req, res) => {
-        console.log(`Serving path ${currentDirPath}/${json}`);
-        res.sendFile(json, {root: currentDirPath});
-      });
-    });
-    
-    const dirList = files.filter(f => !f.endsWith(".json"));
-    
-    dirList.forEach((dirName) => {
-      if (dirName === '.DS_Store') { // create a list of folders to ignore
-        return console.debug(`Folder with name ${dirName} ignored`);
-      }
-      
-      const dirFullPath = path.join(currentDirPath, dirName);
-      
-      fs.stat(dirFullPath, (err, stats) => {
-        if (err) {
-          return console.error('Error getting file stats:', err);
-        }
-        
-        if (stats.isDirectory()) {
-          exposeFile(dirFullPath); // Recursive call for subdirectories
-        }
-      });
-    });
+  }));
+  
+  return files.flat().filter(Boolean);
+}
+
+// Serve JSON files dynamically
+const exposeFile = async () => {
+  const jsonFiles = await findJsonFiles(mocksDirectory);
+  
+  jsonFiles.forEach((jsonPath) => {
+    const urlPath = '/' + jsonPath.replace(/\.json$/, '');
+    console.log(`Serving path ${urlPath}`);
+    app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
   });
 }
 
-
-app.get('/', (req, res) => {
-  res.sendFile('index.html', {root: __dirname});
+// Start the server
+exposeFile().then(() => {
+  app.listen(port, () => {
+    console.log(`Now listening on http://localhost:${port}`);
+  });
+  
+  // serve the entry page
+  app.get('/', (req, res) => {
+    res.sendFile('index.html', {root: __dirname});
+  });
 });
-
-/*app.get('/example', (req, res) => {
-  // maybe should add mocks/ dir
-  res.sendFile('example.json', {root: __dirname});
-});*/
-
-app.listen(port, () => {
-  console.log(`Now listening on http://localhost:${port}`);
-  exposeFile(mainDirPath);
-});
-
 
