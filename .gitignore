@@ -2,9 +2,8 @@
 mocks/*
 !mocks/example.json
 
-# JetBrains
+# JetBrains Fleet
 .fleet/
-.idea/
 
 # Created by https://www.toptal.com/developers/gitignore/api/osx,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=osx,node

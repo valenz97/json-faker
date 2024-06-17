@@ -1,53 +1,46 @@
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
 const express = require('express');
 const app = express();
 
 const port = 8099;
-const mocksDirectory = path.join(__dirname, 'mocks');
+const directoryPath = path.join(__dirname, 'mocks');
 
-const pathList = [];
 
-const findJsonFiles = async (directory, currentPath = '') => {
-  const entries = await fs.readdir(directory, {withFileTypes: true});
-  
-  const files = await Promise.all(entries.map(async (entry) => {
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      // if it's a directory, call recursively the function
-      return findJsonFiles(fullPath, path.join(currentPath, entry.name));
-    } else if (entry.isFile() && entry.name.endsWith('.json')) {
-      return path.join(currentPath, entry.name);
-    } else {
-      console.error(`Path '${path.join(currentPath, entry.name)}' it's not valid`);
-      return null;
+fs.watch('./mocks', (eventType, filename) => {
+  console.log(`${eventType}: ${filename}`);
+  exponeFiles();
+})
+
+
+const exponeFiles = function () {
+  fs.readdir(directoryPath, function (err, files) {
+    if (err) {
+      return console.log('Unable to scan directory: ' + err);
     }
-  }));
-  
-  return files.flat().filter(Boolean);
-}
-
-// Serve JSON files dynamically
-const exposeFile = async () => {
-  const jsonFiles = await findJsonFiles(mocksDirectory);
-  
-  jsonFiles.forEach((jsonPath) => {
-    const urlPath = '/' + jsonPath.replace(/\.json$/, '');
-    pathList.push(urlPath);
-    console.log(`Serving path '${path.resolve(__dirname, urlPath)}'`);
-    app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
+    files.forEach(function (file) {
+      console.log(file);
+      app.get('/' + file.split('.')[0], (req, res) => {
+        res.sendFile('mocks/' + file, {root: __dirname});
+      });
+    });
+    console.log('-----------');
   });
 }
 
-// Start the server
-exposeFile().then(() => {
-  app.listen(port, () => {
-    console.log(`Now listening on http://localhost:${port}`);
-  });
-  
-  // serve the entry page
-  app.get('/', (req, res) => {
-    res.render('index.pug', {pathList: pathList});
-  });
+
+app.get('/', (req, res) => {
+  res.sendFile('index.html', {root: __dirname});
 });
+
+app.get('/example', (req, res) => {
+  res.sendFile('example.json', {root: __dirname});
+});
+
+app.listen(port, () => {
+  console.log(`Now listening on http://localhost:${port}`);
+  console.log('-----------');
+  exponeFiles();
+});
+
 
