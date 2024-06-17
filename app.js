@@ -1,5 +1,5 @@
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
 const express = require('express');
 const app = express();
 
@@ -9,45 +9,73 @@ const mocksDirectory = path.join(__dirname, 'mocks');
 const pathList = [];
 
 const findJsonFiles = async (directory, currentPath = '') => {
-  const entries = await fs.readdir(directory, {withFileTypes: true});
+  const entries = await fs.promises.readdir(directory, {withFileTypes: true});
   
   const files = await Promise.all(entries.map(async (entry) => {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       // if it's a directory, call recursively the function
-      return findJsonFiles(fullPath, path.join(currentPath, entry.name));
+      const subdirectoryFiles = await findJsonFiles(fullPath, path.join(currentPath, entry.name));
+      return {files: subdirectoryFiles, directory: fullPath};
     } else if (entry.isFile() && entry.name.endsWith('.json')) {
-      return path.join(currentPath, entry.name);
+      return {file: path.join(currentPath, entry.name)};
     } else {
       console.error(`Path '${path.join(currentPath, entry.name)}' it's not valid`);
       return null;
     }
   }));
   
-  return files.flat().filter(Boolean);
+  return files.flat().filter(Boolean).reduce((acc, val) => {
+    if (val.directory) {
+      acc.directories.push(val.directory);
+      acc.files.push(...val.files.files);
+    } else if (val.file) {
+      acc.files.push(val.file);
+    }
+    return acc;
+  }, {files: [], directories: []});
 }
 
 // Serve JSON files dynamically
 const exposeFile = async () => {
-  const jsonFiles = await findJsonFiles(mocksDirectory);
+  const {files} = await findJsonFiles(mocksDirectory);
   
-  jsonFiles.forEach((jsonPath) => {
+  files.forEach((jsonPath) => {
     const urlPath = '/' + jsonPath.replace(/\.json$/, '');
-    pathList.push(urlPath);
-    console.log(`Serving path '${path.resolve(__dirname, urlPath)}'`);
-    app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
+    if (!pathList.includes(urlPath)) {
+      pathList.push(urlPath);
+      console.log(`Serving path '${path.resolve(__dirname, urlPath)}'`);
+      app.use(urlPath, express.static(path.join(mocksDirectory, jsonPath)));
+    }
+  });
+}
+
+// Watch directories for changes
+const watchDirectories = (directories) => {
+  directories.forEach(directory => {
+    fs.watch(directory, (eventType, filename) => {
+      console.log(`${eventType}: ${filename} in ${directory}`);
+      exposeFile().then(() => {
+        // Serve the entry page
+        app.get('/', (req, res) => {
+          res.render('index.pug', {pathList: pathList});
+        });
+      });
+    });
   });
 }
 
 // Start the server
-exposeFile().then(() => {
+exposeFile().then(async () => {
+  const {directories} = await findJsonFiles(mocksDirectory);
+  watchDirectories([mocksDirectory, ...directories]);
+  
   app.listen(port, () => {
     console.log(`Now listening on http://localhost:${port}`);
   });
   
-  // serve the entry page
+  // Serve the entry page
   app.get('/', (req, res) => {
     res.render('index.pug', {pathList: pathList});
   });
 });
-
