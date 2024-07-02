@@ -55,7 +55,9 @@ const watchDirectories = (directories) => {
   directories.forEach(directory => {
     fs.watch(directory, (eventType, filename) => {
       console.log(`${eventType}: ${filename} in ${directory}`);
-      exposeFile().then(() => {
+      exposeFile().then(async () => {
+        const {directories} = await findJsonFiles(mocksDirectory);
+        watchDirectories([mocksDirectory, ...directories]);
         // Serve the entry page
         app.get('/', (req, res) => {
           res.render('index.pug', {pathList: pathList});
